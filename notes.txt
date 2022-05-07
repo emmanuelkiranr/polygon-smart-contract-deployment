@@ -1,0 +1,67 @@
+Deploying a smart contract to polygon blockchain
+
+Connect to polygon mumbai blockchain network
+create an app in polygon mumbai network in alchemy
+import the rpc url(http) to metamask
+get mumbai testnet faucet
+
+npm install dotenv --save
+    Add the API_URL(HTTP) & the PRIVATE_KEY
+
+Now in hardhat config file Inside the module.exports add network object
+
+    networks: {
+        mumbai: {
+        url: API_URL,
+        accounts: ["0x${PRIVATE_KEY}"], - [PRIVATE_KEY]
+        }
+    }
+
+Now define the variables - require("dotenv").config(); - this will load the env variables
+now unpack the variables form the process.env object 
+    const {API_URL, PRIVATE_KEY} = process.env;
+    or we can direclty do process.env.API_URL 
+
+Now compile the contract - npx hardhat compile
+Now deploy the contract - npx hardhat run scripts/sample-script.js --network mumbai
+If successfully deployed we'll see the deployed contract address
+
+Create a script to interact with the deployed contract > greet.js
+    To interact/execute fn with a contract deployed on the blockchain we need 4 things
+        1. CONTRACT_ADDRESS
+        2. contract abi
+        3. provider
+        4. signer
+    we have contract address once we deployed it 
+    we can get the abi from artifacts
+        const contractJson = require("../artifacts/contracts/Greeter.sol/Greeter.json");
+        const abi = contractJson.abi;
+    we declare the provider 
+        const provider = new hre.ethers.providers.AlchemyProvider(
+            "maticmum",
+            process.env.ALCHEMY_API_KEY - last part of alchemy url(http)
+        );
+
+        Since we are interacting via a script and not a frontend application that has metamask
+        we need to use a provider that gives us access to the blockchain so use alchemy or infura and manually 
+        specify the network in which we deployed the contract, so that the provider will connect to the right network
+        Syntax is same as like the frontend, but since here we are using alchemy so we specify the AlchemyProvider
+        which takes 2 args one is the network and two the ALCHEMY_API_KEY.
+
+    From the provider we get the signer 
+        const signer = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+
+        Since we are interacting via a script and not a frontend application that has metamask
+        our signer needs to know which account is gonna pay for the transactions, [if we are connecting via frontend
+        then provider will get the account and that account will pay for the txn when we manually sign the txn in 
+        metamask, but here thats not the case we are using AlchemyProvider and not metamask so we need to load the 
+        account's PRIVATE_KEY to the signer variable so that it can automatically sign txns.
+        So this is the flow:
+        - The contract is deployed to maticmum, the provider connects to this network[where the contract is deployed]
+          via the ALCHEMY_API_KEY
+        - The provider then allows the signer to pay for the txn on this network[since provider is connected to this network]
+        - Now we declare the contract instance
+            const contract = new ethers.Contract(contractAddress, abi, signer);
+
+        - The signer signs the transactions on this contract[abi] since its interacting with the CONTRACT_ADDRESS deployed
+          on the maticmum network
